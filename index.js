@@ -4,23 +4,7 @@ const fs = require("fs");
 
 const ROOT = __dirname;
 
-// Check for BUILD_ID — only exists after a successful next build
-const buildId = path.join(ROOT, ".next", "BUILD_ID");
-if (!fs.existsSync(buildId)) {
-  console.log("No production build found. Running next build...");
-  const build = spawnSync(
-    path.join(ROOT, "node_modules/.bin/next"),
-    ["build"],
-    { stdio: "inherit", env: process.env, cwd: ROOT }
-  );
-  if (build.status !== 0) {
-    console.error("Build failed — exiting.");
-    process.exit(1);
-  }
-  console.log("Build complete.");
-}
-
-// Run DB table init
+// Run DB table init (non-fatal if it fails)
 if (process.env.DATABASE_URL) {
   const initScript = path.join(ROOT, "scripts/init-db.js");
   if (fs.existsSync(initScript)) {
@@ -31,7 +15,7 @@ if (process.env.DATABASE_URL) {
 
 // Start Next.js
 const port = process.env.PORT || "3000";
-console.log(`Starting on port ${port}...`);
+console.log(`Starting Dostt Dashboard on port ${port}...`);
 
 const next = spawn(
   path.join(ROOT, "node_modules/.bin/next"),
