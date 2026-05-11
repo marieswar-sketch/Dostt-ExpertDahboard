@@ -25,10 +25,11 @@ COPY --from=builder /app/sql ./sql
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
+COPY --from=builder /app/index.js ./
 
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Run DB init then start the app
-CMD ["sh", "-c", "node scripts/init-db.js && node server.js"]
+# index.js runs DB init then starts server.js
+CMD ["node", "index.js"]
