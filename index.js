@@ -17,10 +17,17 @@ if (process.env.DATABASE_URL) {
 const port = process.env.PORT || "3000";
 console.log(`Starting Dostt Dashboard on port ${port}...`);
 
-const next = spawn(
-  path.join(ROOT, "node_modules/.bin/next"),
-  ["start", "-p", port],
-  { stdio: "inherit", env: { ...process.env, NODE_ENV: "production" }, cwd: ROOT }
-);
+// Use local binary if available, otherwise fall back to npx
+const localBin = path.join(ROOT, "node_modules/.bin/next");
+const nextBin = fs.existsSync(localBin) ? localBin : "npx";
+const nextArgs = fs.existsSync(localBin)
+  ? ["start", "-p", port]
+  : ["next", "start", "-p", port];
+
+const next = spawn(nextBin, nextArgs, {
+  stdio: "inherit",
+  env: { ...process.env, NODE_ENV: "production" },
+  cwd: ROOT,
+});
 
 next.on("exit", (code) => process.exit(code ?? 0));
