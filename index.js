@@ -4,16 +4,27 @@ const fs = require("fs");
 
 const ROOT = __dirname;
 
-// Build if no production build exists (Kubero only runs `npm install` as buildCommand)
-const buildId = path.join(ROOT, ".next", "BUILD_ID");
-if (!fs.existsSync(buildId)) {
-  console.log("No production build found. Running next build...");
-  const build = spawnSync("node_modules/.bin/next", ["build"], {
+function run(cmd, args, extraEnv = {}) {
+  console.log(`> ${cmd} ${args.join(" ")}`);
+  const result = spawnSync(cmd, args, {
     stdio: "inherit",
-    env: { ...process.env, NODE_ENV: "production" },
+    env: { ...process.env, ...extraEnv },
     cwd: ROOT,
   });
-  if (build.status !== 0) {
+  return result.status ?? 1;
+}
+
+// Build if no production build exists
+const buildId = path.join(ROOT, ".next", "BUILD_ID");
+if (!fs.existsSync(buildId)) {
+  console.log("No production build found. Installing dependencies...");
+  if (run("npm", ["install"]) !== 0) {
+    console.error("npm install failed, exiting.");
+    process.exit(1);
+  }
+
+  console.log("Running next build...");
+  if (run("node_modules/.bin/next", ["build"], { NODE_ENV: "production" }) !== 0) {
     console.error("next build failed, exiting.");
     process.exit(1);
   }
@@ -24,7 +35,7 @@ if (process.env.DATABASE_URL) {
   const initScript = path.join(ROOT, "scripts/init-db.js");
   if (fs.existsSync(initScript)) {
     console.log("Running DB init...");
-    spawnSync("node", [initScript], { stdio: "inherit", env: process.env });
+    run("node", [initScript]);
   }
 }
 
