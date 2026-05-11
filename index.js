@@ -4,28 +4,17 @@ const fs = require("fs");
 
 const ROOT = __dirname;
 
-// Self-heal: if no production build exists, install deps and build now
+// Build if no production build exists (Kubero only runs `npm install` as buildCommand)
 const buildId = path.join(ROOT, ".next", "BUILD_ID");
 if (!fs.existsSync(buildId)) {
-  console.log("No production build found. Installing dependencies...");
-  const install = spawnSync("npm", ["install", "--prefer-offline"], {
-    stdio: "inherit",
-    env: process.env,
-    cwd: ROOT,
-  });
-  if (install.status !== 0) {
-    console.error("npm install failed");
-    process.exit(1);
-  }
-
-  console.log("Building Next.js app...");
-  const build = spawnSync("npm", ["run", "build", "--if-present"], {
+  console.log("No production build found. Running next build...");
+  const build = spawnSync("node_modules/.bin/next", ["build"], {
     stdio: "inherit",
     env: { ...process.env, NODE_ENV: "production" },
     cwd: ROOT,
   });
   if (build.status !== 0) {
-    console.error("next build failed");
+    console.error("next build failed, exiting.");
     process.exit(1);
   }
 }
@@ -43,16 +32,14 @@ if (process.env.DATABASE_URL) {
 const port = process.env.PORT || "3000";
 console.log(`Starting Dostt Dashboard on port ${port}...`);
 
-const localBin = path.join(ROOT, "node_modules/.bin/next");
-const nextBin = fs.existsSync(localBin) ? localBin : "npx";
-const nextArgs = fs.existsSync(localBin)
-  ? ["start", "-p", port]
-  : ["next", "start", "-p", port];
-
-const next = spawn(nextBin, nextArgs, {
-  stdio: "inherit",
-  env: { ...process.env, NODE_ENV: "production" },
-  cwd: ROOT,
-});
+const next = spawn(
+  path.join(ROOT, "node_modules/.bin/next"),
+  ["start", "-p", port],
+  {
+    stdio: "inherit",
+    env: { ...process.env, NODE_ENV: "production" },
+    cwd: ROOT,
+  }
+);
 
 next.on("exit", (code) => process.exit(code ?? 0));
