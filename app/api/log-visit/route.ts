@@ -19,7 +19,8 @@ export async function POST(req: NextRequest) {
 
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
   const cleanMobile = String(mobile_number).replace(/\D/g, "");
-  const now = new Date().toISOString();
+  const nowDate = new Date();
+  const now = nowDate.toISOString();
 
   // DB logging (if configured)
   if (process.env.DATABASE_URL) {
@@ -59,19 +60,42 @@ export async function POST(req: NextRequest) {
 
   // Google Sheets logging (if configured)
   if (process.env.GOOGLE_SHEET_SCRIPT_URL) {
+    const istTimestamp = nowDate.toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    const whatViewed = [
+      viewed_today ? "Today" : null,
+      viewed_overall ? "Overall" : null,
+      viewed_history ? "History" : null,
+    ].filter(Boolean).join(", ") || "None";
+
     logToSheet({
-      timestamp: now,
+      timestamp: istTimestamp,
       mobile_number: cleanMobile,
       device_type: device_type ?? "",
-      browser: (browser ?? "").slice(0, 80),
-      viewed_today: viewed_today ? "Yes" : "No",
-      viewed_overall: viewed_overall ? "Yes" : "No",
-      viewed_history: viewed_history ? "Yes" : "No",
+      browser: parseBrowser(browser ?? ""),
+      what_viewed: whatViewed,
       ip_address: ip ?? "",
     }).catch(() => {});
   }
 
   return NextResponse.json({ ok: true });
+}
+
+function parseBrowser(ua: string): string {
+  if (!ua) return "";
+  if (/Edg\/(\d+)/.test(ua)) return `Edge ${ua.match(/Edg\/(\d+)/)?.[1] ?? ""}`;
+  if (/Chrome\/(\d+)/.test(ua)) return `Chrome ${ua.match(/Chrome\/(\d+)/)?.[1] ?? ""}`;
+  if (/Firefox\/(\d+)/.test(ua)) return `Firefox ${ua.match(/Firefox\/(\d+)/)?.[1] ?? ""}`;
+  if (/Safari\//.test(ua)) return "Safari";
+  return ua.slice(0, 30);
 }
 
 async function logToSheet(row: Record<string, string>) {
@@ -85,9 +109,7 @@ async function logToSheet(row: Record<string, string>) {
         row.mobile_number,
         row.device_type,
         row.browser,
-        row.viewed_today,
-        row.viewed_overall,
-        row.viewed_history,
+        row.what_viewed,
         row.ip_address,
       ],
     }),
