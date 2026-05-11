@@ -4,6 +4,32 @@ const fs = require("fs");
 
 const ROOT = __dirname;
 
+// Self-heal: if no production build exists, install deps and build now
+const buildId = path.join(ROOT, ".next", "BUILD_ID");
+if (!fs.existsSync(buildId)) {
+  console.log("No production build found. Installing dependencies...");
+  const install = spawnSync("npm", ["install", "--prefer-offline"], {
+    stdio: "inherit",
+    env: process.env,
+    cwd: ROOT,
+  });
+  if (install.status !== 0) {
+    console.error("npm install failed");
+    process.exit(1);
+  }
+
+  console.log("Building Next.js app...");
+  const build = spawnSync("npm", ["run", "build", "--if-present"], {
+    stdio: "inherit",
+    env: { ...process.env, NODE_ENV: "production" },
+    cwd: ROOT,
+  });
+  if (build.status !== 0) {
+    console.error("next build failed");
+    process.exit(1);
+  }
+}
+
 // Run DB table init (non-fatal if it fails)
 if (process.env.DATABASE_URL) {
   const initScript = path.join(ROOT, "scripts/init-db.js");
@@ -17,7 +43,6 @@ if (process.env.DATABASE_URL) {
 const port = process.env.PORT || "3000";
 console.log(`Starting Dostt Dashboard on port ${port}...`);
 
-// Use local binary if available, otherwise fall back to npx
 const localBin = path.join(ROOT, "node_modules/.bin/next");
 const nextBin = fs.existsSync(localBin) ? localBin : "npx";
 const nextArgs = fs.existsSync(localBin)
