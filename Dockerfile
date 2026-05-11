@@ -1,35 +1,19 @@
-FROM node:22-alpine AS base
+FROM node:22-alpine
 
-# Install dependencies only
-FROM base AS deps
 WORKDIR /app
+
+# Install dependencies
 COPY package*.json ./
 RUN npm ci
 
-# Build the app
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy source and build
 COPY . .
 RUN npm run build
-
-# Production runner
-FROM base AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/sql ./sql
-COPY --from=builder /app/scripts ./scripts
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/index.js ./
 
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV NODE_ENV=production
 
-# index.js runs DB init then starts server.js
+# index.js runs DB init then starts Next.js
 CMD ["node", "index.js"]
