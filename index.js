@@ -4,19 +4,20 @@ const fs = require("fs");
 
 const ROOT = __dirname;
 
-// Build if .next doesn't exist (Kubero may not run npm build)
-const nextDir = path.join(ROOT, ".next");
-if (!fs.existsSync(nextDir)) {
-  console.log("Building Next.js app...");
+// Check for BUILD_ID — only exists after a successful next build
+const buildId = path.join(ROOT, ".next", "BUILD_ID");
+if (!fs.existsSync(buildId)) {
+  console.log("No production build found. Running next build...");
   const build = spawnSync(
     path.join(ROOT, "node_modules/.bin/next"),
     ["build"],
     { stdio: "inherit", env: process.env, cwd: ROOT }
   );
   if (build.status !== 0) {
-    console.error("Build failed");
+    console.error("Build failed — exiting.");
     process.exit(1);
   }
+  console.log("Build complete.");
 }
 
 // Run DB table init
